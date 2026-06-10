@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EbookForge AI — Genera Ebook & Guide con AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400&family=Inter:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════
+   TOKENS
+═══════════════════════════════════════════ */
+:root {
+  --gold:        #C9A84C;
+  --gold-light:  #E2C27D;
+  --gold-dark:   #8B6820;
+  --gold-dim:    #3D2E0F;
+  --bg:          #080809;
+  --s1:          #0F0F12;
+  --s2:          #161619;
+  --s3:          #1E1E23;
+  --s4:          #26262D;
+  --border:      rgba(201,168,76,0.12);
+  --border-md:   rgba(201,168,76,0.28);
+  --border-hi:   rgba(201,168,76,0.5);
+  --text:        #EDE8DF;
+  --text-2:      #9E998F;
+  --text-3:      #5A5650;
+  --r:           10px;
+  --r-lg:        18px;
+}
+
+/* ═══════════════════════════════════════════
+   RESET & BASE
+═══════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ═══════════════════════════════════════════
+   AMBIENT GLOW
+═══════════════════════════════════════════ */
+.glow-tr, .glow-bl {
+  position: fixed; border-radius: 50%;
+  filter: blur(140px); pointer-events: none; z-index: 0;
+}
+.glow-tr { width: 600px; height: 600px; background: #C9A84C; opacity: .07; top: -200px; right: -150px; }
+.glow-bl { width: 500px; height: 500px; background: #4A20A0; opacity: .06; bottom: -150px; left: -150px; }
+
+/* ═══════════════════════════════════════════
+   APP SHELL
+═══════════════════════════════════════════ */
+.app {
+  position: relative; z-index: 1;
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  min-height: 100vh;
+}
+
+/* ═══════════════════════════════════════════
+   SIDEBAR
+═══════════════════════════════════════════ */
+.sidebar {
+  background: var(--s1);
+  border-right: 1px solid var(--border);
+  position: sticky; top: 0; height: 100vh;
+  overflow-y: auto; overflow-x: hidden;
+  display: flex; flex-direction: column;
+  scrollbar-width: thin;
+  scrollbar-color: var(--gold-dark) transparent;
+}
+.sidebar::-webkit-scrollbar { width: 3px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--gold-dark); border-radius: 2px; }
+
+/* logo */
+.logo-row {
+  padding: 24px 20px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+  flex-shrink: 0;
+}
+.logo-gem {
+  width: 34px; height: 34px;
+  background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.logo-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 17px; font-weight: 700;
+  background: linear-gradient(90deg, var(--gold-light), var(--gold));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.logo-ai {
+  margin-left: auto;
+  font-size: 9px; font-weight: 700; letter-spacing: 1px;
+  background: linear-gradient(90deg, var(--gold-dark), var(--gold));
+  color: #000; padding: 2px 7px; border-radius: 4px;
+  text-transform: uppercase;
+}
+
+/* panel */
+.panel {
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.panel-label {
+  font-size: 9px; font-weight: 700; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--text-3);
+  margin-bottom: 12px;
+}
+
+/* format grid */
+.fmt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.fmt-card {
+  background: var(--s2); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 11px 8px;
+  cursor: pointer; text-align: center;
+  transition: border-color .2s, background .2s;
+}
+.fmt-card:hover { border-color: var(--border-md); background: var(--s3); }
+.fmt-card.on { border-color: var(--gold); background: rgba(201,168,76,.07); }
+.fmt-card.on .fmt-name { color: var(--gold-light); }
+.fmt-icon { font-size: 20px; display: block; margin-bottom: 5px; }
+.fmt-name { font-size: 11px; font-weight: 600; color: var(--text); }
+.fmt-sub  { font-size: 9px; color: var(--text-3); margin-top: 1px; }
+
+/* radio list */
+.radio-list { display: flex; flex-direction: column; gap: 6px; }
+.radio-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 9px 11px; background: var(--s2);
+  border: 1px solid var(--border); border-radius: 8px;
+  cursor: pointer; transition: border-color .2s;
+}
+.radio-item:hover { border-color: var(--border-md); }
+.radio-item.on { border-color: var(--gold); background: rgba(201,168,76,.05); }
+.radio-dot {
+  width: 13px; height: 13px; border-radius: 50%;
+  border: 2px solid var(--text-3); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color .2s, background .2s;
+}
+.radio-item.on .radio-dot {
+  border-color: var(--gold); background: var(--gold);
+  box-shadow: 0 0 7px rgba(201,168,76,.5);
+}
+.radio-item.on .radio-dot::after {
+  content: ''; width: 4px; height: 4px;
+  background: #000; border-radius: 50%;
+}
+.radio-body { flex: 1; }
+.radio-name { font-size: 12px; font-weight: 600; }
+.radio-desc { font-size: 10px; color: var(--text-3); margin-top: 1px; }
+
+/* theme swatches */
+.swatch-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; }
+.swatch {
+  height: 38px; border-radius: 8px; cursor: pointer;
+  border: 2px solid transparent; transition: transform .15s, border-color .2s;
+  position: relative; overflow: hidden;
+}
+.swatch:hover { transform: scale(1.06); }
+.swatch.on { border-color: var(--gold); box-shadow: 0 0 10px rgba(201,168,76,.35); }
+.swatch-label {
+  position: absolute; bottom: 3px; left: 0; right: 0;
+  text-align: center; font-size: 9px; font-weight: 700;
+  color: rgba(255,255,255,.9); text-shadow: 0 1px 3px rgba(0,0,0,.9);
+}
+
+/* image options */
+.img-opt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.img-opt {
+  padding: 8px 6px; text-align: center;
+  background: var(--s2); border: 1px solid var(--border);
+  border-radius: 8px; cursor: pointer; font-size: 10px;
+  transition: border-color .2s, color .2s;
+}
+.img-opt:hover { border-color: var(--border-md); }
+.img-opt.on { border-color: var(--gold); color: var(--gold-light); }
+.img-opt-icon { font-size: 15px; display: block; margin-bottom: 3px; }
+
+/* ═══════════════════════════════════════════
+   MAIN AREA
+═══════════════════════════════════════════ */
+.main {
+  display: flex; flex-direction: column;
+  min-height: 100vh;
+}
+
+/* topbar */
+.topbar {
+  padding: 18px 36px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(8,8,9,.85);
+  backdrop-filter: blur(12px);
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.topbar-head {}
+.topbar-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 21px; font-weight: 700;
+  background: linear-gradient(135deg, var(--gold-light), var(--gold));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.topbar-sub { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+.unlimited-pill {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(201,168,76,.07);
+  border: 1px solid var(--border-md);
+  border-radius: 30px; padding: 7px 14px;
+  font-size: 12px; color: var(--gold-light); font-weight: 500;
+}
+.live-dot {
+  width: 7px; height: 7px; background: #3ECF8E;
+  border-radius: 50%;
+  box-shadow: 0 0 7px #3ECF8E;
+  animation: livePulse 2s infinite;
+}
+@keyframes livePulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* editor */
+.editor { flex: 1; padding: 36px; display: flex; flex-direction: column; gap: 22px; }
+
+/* prompt box */
+.prompt-box {
+  background: var(--s1); border: 1px solid var(--border);
+  border-radius: var(--r-lg); overflow: hidden;
+  transition: border-color .3s, box-shadow .3s;
+}
+.prompt-box:focus-within {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 1px rgba(201,168,76,.18), 0 8px 40px rgba(201,168,76,.06);
+}
+.prompt-top {
+  padding: 13px 18px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.prompt-label-row {
+  font-size: 10px; font-weight: 700; letter-spacing: 1.2px;
+  text-transform: uppercase; color: var(--text-3);
+  display: flex; align-items: center; gap: 7px;
+}
+.prompt-label-row::before {
+  content: ''; width: 5px; height: 5px;
+  background: var(--gold); border-radius: 50%;
+  box-shadow: 0 0 7px var(--gold);
+}
+.char-ct {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px; color: var(--text-3);
+}
+#promptTA {
+  width: 100%; min-height: 150px;
+  background: transparent; border: none; outline: none;
+  color: var(--text); font-family: 'Inter', sans-serif;
+  font-size: 15px; line-height: 1.75;
+  padding: 22px 22px 16px;
+  resize: none; caret-color: var(--gold);
+}
+#promptTA::placeholder { color: var(--text-3); }
+.prompt-foot {
+  padding: 11px 18px; border-top: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.chips { display: flex; gap: 7px; flex-wrap: wrap; flex: 1; }
+.chip {
+  padding: 4px 10px;
+  background: var(--s2); border: 1px solid var(--border);
+  border-radius: 20px; font-size: 11px; color: var(--text-2);
+  cursor: pointer; white-space: nowrap;
+  transition: border-color .15s, color .15s;
+}
+.chip:hover { border-color: var(--gold); color: var(--gold-light); }
+
+/* generate button */
+#genBtn {
+  padding: 13px 30px;
+  background: linear-gradient(135deg, #A07830, var(--gold), #D4B060);
+  border: none; border-radius: 9px;
+  color: #0A0600; font-family: 'Inter', sans-serif;
+  font-size: 13px; font-weight: 700;
+  cursor: pointer; white-space: nowrap;
+  display: flex; align-items: center; gap: 7px;
+  transition: transform .2s, box-shadow .2s;
+  position: relative; overflow: hidden;
+  letter-spacing: .2px;
+}
+#genBtn::after {
+  content: '';
+  position: absolute; top: 0; left: -100%;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.25), transparent);
+  transition: left .5s;
+}
+#genBtn:hover::after { left: 100%; }
+#genBtn:hover { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(201,168,76,.38); }
+#genBtn:disabled { opacity: .5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+/* ── LOADING ── */
+#loadingZone {
+  display: none; padding: 64px 40px; text-align: center;
+}
+#loadingZone.show { display: block; }
+.spin {
+  width: 44px; height: 44px; margin: 0 auto 20px;
+  border: 2px solid var(--s4);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.load-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 18px; color: var(--text); margin-bottom: 6px;
+}
+.load-sub { font-size: 13px; color: var(--text-2); margin-bottom: 28px; }
+.steps { display: flex; flex-direction: column; gap: 7px; max-width: 320px; margin: 0 auto; }
+.step {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 14px; border-radius: 8px;
+  font-size: 12px; color: var(--text-3);
+  border: 1px solid transparent;
+  transition: all .35s;
+}
+.step.active {
+  background: rgba(201,168,76,.06);
+  border-color: rgba(201,168,76,.2);
+  color: var(--gold-light);
+}
+.step.done { color: var(--text-2); }
+.step.done .step-icon::after { content: '✓'; }
+.step-icon { font-size: 14px; min-width: 18px; }
+
+/* ── EMPTY STATE ── */
+#emptyZone { text-align: center; padding: 80px 40px; }
+.empty-gem { font-size: 52px; margin-bottom: 16px; opacity: .35; }
+.empty-h { font-family: 'Playfair Display', serif; font-size: 22px; margin-bottom: 8px; }
+.empty-p { font-size: 13px; color: var(--text-2); line-height: 1.65; max-width: 380px; margin: 0 auto; }
+
+/* ── OUTPUT ── */
+#outputZone { display: none; }
+#outputZone.show { display: block; }
+.out-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px;
+}
+.out-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 17px; font-weight: 700; color: var(--gold-light);
+  display: flex; align-items: center; gap: 9px;
+}
+.out-actions { display: flex; gap: 8px; }
+.act-btn {
+  padding: 8px 16px;
+  background: var(--s2); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text); font-size: 12px; font-weight: 600;
+  cursor: pointer; display: flex; align-items: center; gap: 6px;
+  transition: border-color .2s, background .2s;
+}
+.act-btn:hover { border-color: var(--border-md); background: var(--s3); }
+.act-btn.gold {
+  background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+  border-color: var(--gold); color: #000; font-weight: 700;
+}
+.act-btn.gold:hover { box-shadow: 0 4px 18px rgba(201,168,76,.3); transform: translateY(-1px); }
+
+/* document shell */
+.doc-shell {
+  background: var(--s1); border: 1px solid var(--border);
+  border-radius: var(--r-lg); overflow: hidden;
+}
+.doc-chrome {
+  padding: 11px 18px; border-bottom: 1px solid var(--border);
+  background: var(--s2);
+  display: flex; align-items: center; gap: 7px;
+}
+.dot { width: 10px; height: 10px; border-radius: 50%; }
+.dot-r { background: #FF5F57; }
+.dot-y { background: #FEBC2E; }
+.dot-g { background: #28C840; }
+.doc-fname {
+  margin-left: 8px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px; color: var(--text-2);
+}
+
+/* ═══════════════════════════════════════════
+   DOCUMENT CONTENT STYLES
+═══════════════════════════════════════════ */
+#docBody {
+  padding: 52px 60px;
+  font-family: 'Inter', sans-serif;
+  line-height: 1.82;
+  color: var(--text);
+  font-size: 15px;
+}
+
+/* cover */
+#docBody .doc-cover {
+  text-align: center;
+  padding: 40px 0 52px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 44px;
+}
+#docBody .cover-badge {
+  display: inline-block;
+  font-size: 9px; font-weight: 700; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--gold);
+  border: 1px solid var(--border-md);
+  padding: 4px 12px; border-radius: 20px;
+  margin-bottom: 18px;
+}
+#docBody .cover-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 2.6em; font-weight: 900; line-height: 1.15;
+  color: var(--text); margin-bottom: 14px;
+  background: linear-gradient(135deg, #fff, var(--gold-light));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+#docBody .cover-subtitle {
+  font-size: 1.1em; color: var(--text-2);
+  max-width: 520px; margin: 0 auto 28px; line-height: 1.6;
+}
+#docBody .cover-stats {
+  display: flex; justify-content: center; gap: 36px;
+}
+#docBody .stat {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+}
+#docBody .stat-num {
+  font-family: 'DM Mono', monospace;
+  font-size: 20px; font-weight: 700; color: var(--gold);
+}
+#docBody .stat-label { font-size: 10px; color: var(--text-3); letter-spacing: .5px; }
+
+/* TOC */
+#docBody .toc-block {
+  background: var(--s2); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 24px 28px;
+  margin-bottom: 44px;
+}
+#docBody .toc-header {
+  font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--gold);
+  margin-bottom: 16px;
+}
+#docBody .toc-list { display: flex; flex-direction: column; gap: 0; }
+#docBody .toc-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--border);
+  font-size: 13px;
+}
+#docBody .toc-item:last-child { border-bottom: none; }
+#docBody .toc-num {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px; font-weight: 700; color: var(--gold);
+  min-width: 22px;
+}
+#docBody .toc-title-text { flex: 1; color: var(--text); }
+#docBody .toc-page { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text-3); }
+
+/* chapters */
+#docBody .chapter { margin-bottom: 52px; }
+#docBody .chapter-header {
+  padding-bottom: 20px; margin-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+#docBody .chapter-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
+  color: var(--gold); text-transform: uppercase; margin-bottom: 8px;
+}
+#docBody .chapter-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.65em; font-weight: 700; line-height: 1.25;
+  color: var(--text); margin-bottom: 10px;
+}
+#docBody .chapter-intro {
+  font-size: 14px; color: var(--text-2);
+  font-style: italic; line-height: 1.65;
+}
+#docBody .chapter-body h3 {
+  font-size: 1.05em; font-weight: 700;
+  color: var(--gold-light); margin: 24px 0 8px;
+}
+#docBody .chapter-body p { margin-bottom: 14px; }
+#docBody .chapter-body ul,
+#docBody .chapter-body ol { margin: 10px 0 14px 20px; }
+#docBody .chapter-body li { margin-bottom: 6px; }
+#docBody .chapter-body strong { color: var(--gold-light); font-weight: 600; }
+#docBody .chapter-body em { color: var(--text-2); }
+#docBody blockquote {
+  border-left: 3px solid var(--gold);
+  padding: 12px 20px;
+  background: rgba(201,168,76,.04);
+  border-radius: 0 8px 8px 0;
+  margin: 16px 0;
+  font-style: italic; color: var(--text-2);
+}
+
+/* TIP BOX */
+#docBody .tip-box {
+  display: flex; gap: 14px; align-items: flex-start;
+  background: rgba(74,158,255,.05);
+  border: 1px solid rgba(74,158,255,.18);
+  border-radius: var(--r); padding: 16px 18px;
+  margin: 18px 0;
+}
+#docBody .tip-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+#docBody .tip-content { font-size: 13px; line-height: 1.65; }
+#docBody .tip-content strong { color: #6BBBFF; }
+
+/* ACTION BOX */
+#docBody .action-box {
+  display: flex; gap: 14px; align-items: flex-start;
+  background: rgba(201,168,76,.05);
+  border: 1px solid var(--border-md);
+  border-radius: var(--r); padding: 16px 18px;
+  margin: 18px 0;
+}
+#docBody .action-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+#docBody .action-content { font-size: 13px; line-height: 1.65; }
+#docBody .action-content strong { color: var(--gold-light); }
+
+/* STAT BOX */
+#docBody .stat-box {
+  display: inline-flex; flex-direction: column;
+  align-items: center; gap: 3px;
+  background: var(--s2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 10px 20px;
+  margin: 6px 4px;
+}
+#docBody .stat-box-num {
+  font-family: 'DM Mono', monospace;
+  font-size: 22px; font-weight: 700; color: var(--gold);
+}
+#docBody .stat-box-label { font-size: 11px; color: var(--text-3); }
+
+/* IMAGE PLACEHOLDERS */
+#docBody .img-placeholder {
+  width: 100%; border-radius: var(--r);
+  margin: 20px 0; border: 1px dashed var(--border-md);
+  overflow: hidden;
+}
+#docBody .img-placeholder.visual {
+  height: 160px;
+  background: var(--s2);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 8px;
+}
+#docBody .img-placeholder.icons {
+  background: var(--s2);
+  padding: 22px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 8px;
+}
+#docBody .img-placeholder.chart {
+  background: var(--s2);
+  padding: 22px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 12px;
+}
+#docBody .img-icon { font-size: 36px; opacity: .7; }
+#docBody .img-label {
+  font-size: 11px; color: var(--text-3);
+  text-align: center; max-width: 340px;
+}
+/* chart bars */
+#docBody .chart-bars {
+  display: flex; align-items: flex-end; gap: 8px;
+  height: 70px;
+}
+#docBody .chart-bars span {
+  width: 28px; border-radius: 4px 4px 0 0;
+  background: linear-gradient(to top, var(--gold-dark), var(--gold));
+  opacity: .75;
+}
+
+/* conclusion */
+#docBody .doc-conclusion {
+  margin-top: 52px;
+  padding: 32px;
+  background: var(--s2); border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+}
+#docBody .doc-conclusion h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.4em; font-weight: 700; color: var(--gold-light);
+  margin-bottom: 16px;
+}
+
+/* ── THEME OVERRIDES ── */
+.t-midnight .chapter-title,
+.t-midnight .cover-title { background: linear-gradient(135deg,#fff,#6BB5FF); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.t-midnight .chapter-label, .t-midnight .toc-num, .t-midnight .stat-num { color:#4A9EFF; }
+.t-midnight .tip-box { border-color: rgba(74,158,255,.3); }
+.t-midnight .action-box { border-color: rgba(74,158,255,.2); }
+.t-midnight .cover-badge { color:#4A9EFF; border-color:rgba(74,158,255,.3); }
+
+.t-emerald .chapter-title,
+.t-emerald .cover-title { background: linear-gradient(135deg,#fff,#5DFFA0); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.t-emerald .chapter-label, .t-emerald .toc-num, .t-emerald .stat-num { color:#2ECC71; }
+.t-emerald .action-box { border-color:rgba(46,204,113,.25); background:rgba(46,204,113,.04); }
+.t-emerald .cover-badge { color:#2ECC71; border-color:rgba(46,204,113,.3); }
+
+.t-rose .chapter-title,
+.t-rose .cover-title { background: linear-gradient(135deg,#fff,#FF8FA3); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.t-rose .chapter-label, .t-rose .toc-num, .t-rose .stat-num { color:#FF6B84; }
+.t-rose .action-box { border-color:rgba(255,107,132,.25); background:rgba(255,107,132,.04); }
+.t-rose .cover-badge { color:#FF6B84; border-color:rgba(255,107,132,.3); }
+
+.t-purple .chapter-title,
+.t-purple .cover-title { background: linear-gradient(135deg,#fff,#C77DFF); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.t-purple .chapter-label, .t-purple .toc-num, .t-purple .stat-num { color:#C77DFF; }
+.t-purple .action-box { border-color:rgba(199,125,255,.25); background:rgba(199,125,255,.04); }
+.t-purple .cover-badge { color:#C77DFF; border-color:rgba(199,125,255,.3); }
+
+/* scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--gold-dark); border-radius: 3px; }
+
+/* responsive */
+@media(max-width:860px){
+  .app { grid-template-columns: 1fr; }
+  .sidebar { position:relative; height:auto; max-height:none; }
+  .editor { padding: 20px; }
+  .topbar { padding: 14px 20px; }
+  #docBody { padding: 32px 24px; }
+  .out-actions { flex-wrap: wrap; }
+}
+</style>
+</head>
+<body>
+
+<div class="glow-tr"></div>
+<div class="glow-bl"></div>
+
+<div class="app">
+
+<!-- ════════════════ SIDEBAR ════════════════ -->
+<aside class="sidebar">
+
+  <div class="logo-row">
+    <div class="logo-gem">✦</div>
+    <span class="logo-name">EbookForge</span>
+    <span class="logo-ai">AI</span>
+  </div>
+
+  <!-- FORMAT -->
+  <div class="panel">
+    <div class="panel-label">Formato Output</div>
+    <div class="fmt-grid">
+      <div class="fmt-card on" data-fmt="ebook" onclick="setFormat(this)">
+        <span class="fmt-icon">📖</span>
+        <div class="fmt-name">Ebook</div>
+        <div class="fmt-sub">Capitoli completi</div>
+      </div>
+      <div class="fmt-card" data-fmt="guide" onclick="setFormat(this)">
+        <span class="fmt-icon">📋</span>
+        <div class="fmt-name">Guida</div>
+        <div class="fmt-sub">Step-by-step</div>
+      </div>
+      <div class="fmt-card" data-fmt="report" onclick="setFormat(this)">
+        <span class="fmt-icon">📊</span>
+        <div class="fmt-name">Report</div>
+        <div class="fmt-sub">Dati & analisi</div>
+      </div>
+      <div class="fmt-card" data-fmt="checklist" onclick="setFormat(this)">
+        <span class="fmt-icon">✅</span>
+        <div class="fmt-name">Checklist</div>
+        <div class="fmt-sub">Azione rapida</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LENGTH -->
+  <div class="panel">
+    <div class="panel-label">Lunghezza</div>
+    <div class="radio-list">
+      <div class="radio-item" data-len="concise" onclick="setLength(this)">
+        <div class="radio-dot"></div>
+        <div class="radio-body">
+          <div class="radio-name">Conciso</div>
+          <div class="radio-desc">5–7 capitoli · ~2.000 parole</div>
+        </div>
+      </div>
+      <div class="radio-item on" data-len="standard" onclick="setLength(this)">
+        <div class="radio-dot"></div>
+        <div class="radio-body">
+          <div class="radio-name">Standard</div>
+          <div class="radio-desc">10–12 capitoli · ~5.000 parole</div>
+        </div>
+      </div>
+      <div class="radio-item" data-len="comprehensive" onclick="setLength(this)">
+        <div class="radio-dot"></div>
+        <div class="radio-body">
+          <div class="radio-name">Completo</div>
+          <div class="radio-desc">15–20 capitoli · ~10.000 parole</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- THEME -->
+  <div class="panel">
+    <div class="panel-label">Tema Colori</div>
+    <div class="swatch-grid">
+      <div class="swatch on" data-theme="gold"
+        style="background:linear-gradient(135deg,#1a1204,#C9A84C)"
+        onclick="setTheme(this,'gold')">
+        <span class="swatch-label">Gold</span>
+      </div>
+      <div class="swatch" data-theme="midnight"
+        style="background:linear-gradient(135deg,#061020,#4A9EFF)"
+        onclick="setTheme(this,'midnight')">
+        <span class="swatch-label">Blu</span>
+      </div>
+      <div class="swatch" data-theme="emerald"
+        style="background:linear-gradient(135deg,#041410,#2ECC71)"
+        onclick="setTheme(this,'emerald')">
+        <span class="swatch-label">Smeraldo</span>
+      </div>
+      <div class="swatch" data-theme="rose"
+        style="background:linear-gradient(135deg,#1a0810,#FF6B84)"
+        onclick="setTheme(this,'rose')">
+        <span class="swatch-label">Rosa</span>
+      </div>
+      <div class="swatch" data-theme="cream"
+        style="background:linear-gradient(135deg,#1a1810,#E8D5A3)"
+        onclick="setTheme(this,'cream')">
+        <span class="swatch-label">Crema</span>
+      </div>
+      <div class="swatch" data-theme="purple"
+        style="background:linear-gradient(135deg,#100820,#C77DFF)"
+        onclick="setTheme(this,'purple')">
+        <span class="swatch-label">Viola</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- IMAGE STYLE -->
+  <div class="panel">
+    <div class="panel-label">Stile Immagini</div>
+    <div class="img-opt-grid">
+      <div class="img-opt on" data-img="placeholder" onclick="setImg(this)">
+        <span class="img-opt-icon">🖼️</span>Segnaposto
+      </div>
+      <div class="img-opt" data-img="icons" onclick="setImg(this)">
+        <span class="img-opt-icon">✨</span>Icone
+      </div>
+      <div class="img-opt" data-img="charts" onclick="setImg(this)">
+        <span class="img-opt-icon">📈</span>Grafici
+      </div>
+      <div class="img-opt" data-img="none" onclick="setImg(this)">
+        <span class="img-opt-icon">📝</span>Solo testo
+      </div>
+    </div>
+  </div>
+
+  <!-- LANG -->
+  <div class="panel">
+    <div class="panel-label">Lingua</div>
+    <div class="radio-list">
+      <div class="radio-item on" data-lang="it" onclick="setLang(this)">
+        <div class="radio-dot"></div>
+        <div class="radio-body"><div class="radio-name">🇮🇹 Italiano</div></div>
+      </div>
+      <div class="radio-item" data-lang="en" onclick="setLang(this)">
+        <div class="radio-dot"></div>
+        <div class="radio-body"><div class="radio-name">🇬🇧 English</div></div>
+      </div>
+    </div>
+  </div>
+
+</aside>
+
+<!-- ════════════════ MAIN ════════════════ -->
+<main class="main">
+
+  <div class="topbar">
+    <div class="topbar-head">
+      <div class="topbar-title">EbookForge AI</div>
+      <div class="topbar-sub">Crea ebook, guide e report professionali — illimitato</div>
+    </div>
+    <div class="unlimited-pill">
+      <div class="live-dot"></div>
+      Generazione Illimitata ✦
+    </div>
+  </div>
+
+  <div class="editor">
+
+    <!-- PROMPT -->
+    <div class="prompt-box">
+      <div class="prompt-top">
+        <div class="prompt-label-row">Il tuo prompt</div>
+        <div class="char-ct" id="charCt">0</div>
+      </div>
+      <textarea id="promptTA"
+        placeholder="Descrivi l'ebook, guida o report da creare...&#10;&#10;Es: «Crea una guida completa su come guadagnare online con i prodotti digitali nel 2024, con strategie pratiche step-by-step per chi parte da zero»"
+        oninput="onType(this)"></textarea>
+      <div class="prompt-foot">
+        <div class="chips">
+          <div class="chip" onclick="useEx('ebook')">📖 Ebook monetizzazione</div>
+          <div class="chip" onclick="useEx('guida')">🚀 Guida TikTok crescita</div>
+          <div class="chip" onclick="useEx('report')">📊 Report mercato AI</div>
+          <div class="chip" onclick="useEx('check')">✅ Checklist lancio</div>
+        </div>
+        <button id="genBtn" onclick="generate()">
+          <span id="btnIco">✦</span>
+          <span id="btnTxt">Genera</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- LOADING -->
+    <div id="loadingZone">
+      <div class="spin"></div>
+      <div class="load-title">Generazione in corso...</div>
+      <div class="load-sub">L'AI sta scrivendo il tuo documento completo</div>
+      <div class="steps">
+        <div class="step" id="s1"><span class="step-icon">🧠</span> Analisi del prompt</div>
+        <div class="step" id="s2"><span class="step-icon">🏗️</span> Strutturazione capitoli</div>
+        <div class="step" id="s3"><span class="step-icon">✍️</span> Scrittura contenuto</div>
+        <div class="step" id="s4"><span class="step-icon">💡</span> Aggiunta suggerimenti & azioni</div>
+        <div class="step" id="s5"><span class="step-icon">🎨</span> Applicazione tema & stile</div>
+      </div>
+    </div>
+
+    <!-- EMPTY -->
+    <div id="emptyZone">
+      <div class="empty-gem">✦</div>
+      <div class="empty-h">Pronto a creare qualcosa di straordinario</div>
+      <div class="empty-p">Incolla il tuo prompt, scegli formato e lunghezza, poi premi Genera. Il tuo documento professionale sarà pronto in secondi.</div>
+    </div>
+
+    <!-- OUTPUT -->
+    <div id="outputZone">
+      <div class="out-header">
+        <div class="out-title">✦ <span id="outTitleTxt">Documento Generato</span></div>
+        <div class="out-actions">
+          <button class="act-btn" onclick="doCopy()">📋 Copia testo</button>
+          <button class="act-btn" onclick="doRegen()">🔄 Rigenera</button>
+          <button class="act-btn gold" onclick="doDownload()">⬇️ Scarica</button>
+        </div>
+      </div>
+      <div class="doc-shell" id="docShell">
+        <div class="doc-chrome">
+          <div class="dot dot-r"></div>
+          <div class="dot dot-y"></div>
+          <div class="dot dot-g"></div>
+          <div class="doc-fname" id="docFname">documento.ebook</div>
+        </div>
+        <div id="docBody"></div>
+      </div>
+    </div>
+
+  </div><!-- /editor -->
+</main>
+</div><!-- /app -->
+
+<script>
+/* ── STATE ── */
+const S = {
+  fmt: 'ebook', len: 'standard',
+  theme: 'gold', img: 'placeholder', lang: 'it',
+  lastPrompt: '', busy: false
+};
+
+/* ── SELECTORS ── */
+const setFormat = el => {
+  document.querySelectorAll('.fmt-card').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on'); S.fmt = el.dataset.fmt; refreshFname();
+};
+const setLength = el => {
+  document.querySelectorAll('.radio-item[data-len]').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on'); S.len = el.dataset.len;
+};
+const setTheme = (el, t) => {
+  document.querySelectorAll('.swatch').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on'); S.theme = t; applyTheme(t);
+};
+const setImg = el => {
+  document.querySelectorAll('.img-opt').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on'); S.img = el.dataset.img;
+};
+const setLang = el => {
+  document.querySelectorAll('.radio-item[data-lang]').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on'); S.lang = el.dataset.lang;
+};
+
+const applyTheme = t => {
+  const shell = document.getElementById('docShell');
+  shell.className = shell.className.replace(/\bt-\S+/g,'').trim();
+  if(t !== 'gold') shell.classList.add('t-'+t);
+};
+
+const refreshFname = () => {
+  const ext = {ebook:'.ebook',guide:'.guide',report:'.report',checklist:'.checklist'};
+  document.getElementById('docFname').textContent = 'documento'+(ext[S.fmt]||'.doc');
+};
+
+const onType = el => {
+  document.getElementById('charCt').textContent = el.value.length+' car.';
+};
+
+/* ── EXAMPLES ── */
+const EX = {
+  ebook: 'Crea un ebook completo su come guadagnare online con i prodotti digitali nel 2024. Includi strategie pratiche per chi parte da zero: come scegliere la nicchia giusta, creare il primo prodotto digitale, venderlo su Stan Store, e scalare i guadagni con TikTok e Instagram.',
+  guida: 'Scrivi una guida pratica step-by-step su come crescere da 0 a 10.000 follower su TikTok in 90 giorni nel 2024. Includi strategie di contenuto, orari ottimali di pubblicazione, come usare i trend, hook vincenti per i primi 3 secondi, e come monetizzare la crescita.',
+  report: 'Crea un report dettagliato sullo stato del mercato AI per i creator italiani nel 2024. Analizza opportunità concrete, i tool AI più efficaci, i trend emergenti, i guadagni medi dei creator digitali italiani, e le previsioni per il 2025.',
+  check: 'Crea una checklist operativa completa per il lancio di un prodotto digitale su Stan Store. Includi tutto: dalla creazione del prodotto alla landing page, dalla strategia email ai contenuti social per TikTok e Instagram, dal funnel di vendita al post-lancio.'
+};
+const useEx = k => {
+  document.getElementById('promptTA').value = EX[k];
+  onType(document.getElementById('promptTA'));
+};
+
+/* ── STEP ANIMATION ── */
+let stepTimer = null;
+const animSteps = () => {
+  const ids = ['s1','s2','s3','s4','s5'];
+  const delays = [0, 800, 2000, 3500, 5000];
+  ids.forEach((id,i) => {
+    setTimeout(() => {
+      ids.slice(0,i).forEach(prev => {
+        const el = document.getElementById(prev);
+        el.classList.remove('active'); el.classList.add('done');
+      });
+      document.getElementById(id).classList.add('active');
+    }, delays[i]);
+  });
+};
+const resetSteps = () => {
+  ['s1','s2','s3','s4','s5'].forEach(id => {
+    const el = document.getElementById(id);
+    el.classList.remove('active','done');
+  });
+};
+
+/* ── MAIN GENERATE ── */
+async function generate() {
+  const prompt = document.getElementById('promptTA').value.trim();
+  if (!prompt) {
+    const box = document.querySelector('.prompt-box');
+    box.style.borderColor = '#FF6B84';
+    setTimeout(()=>box.style.borderColor='',1500);
+    return;
+  }
+  if (S.busy) return;
+  S.busy = true; S.lastPrompt = prompt;
+
+  /* UI: show loading */
+  document.getElementById('genBtn').disabled = true;
+  document.getElementById('btnTxt').textContent = 'Generando...';
+  document.getElementById('emptyZone').style.display = 'none';
+  document.getElementById('outputZone').classList.remove('show');
+  document.getElementById('loadingZone').classList.add('show');
+  resetSteps(); animSteps();
+
+  try {
+    const res = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt, format: S.fmt, length: S.len,
+        lang: S.lang, imageStyle: S.img
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Errore server');
+
+    let html = data.html || '';
+    // strip accidental markdown fences
+    html = html.replace(/^```html?\s*/i,'').replace(/\s*```$/,'').trim();
+
+    renderOutput(html, prompt);
+  } catch(err) {
+    renderError(err.message);
+  }
+}
+
+function renderOutput(html, prompt) {
+  document.getElementById('loadingZone').classList.remove('show');
+
+  /* extract title for header */
+  const titleMatch = html.match(/<h1[^>]*class="cover-title"[^>]*>([\s\S]*?)<\/h1>/i)
+    || html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+  const rawTitle = titleMatch ? titleMatch[1].replace(/<[^>]+>/g,'').trim() : prompt.substring(0,50);
+  document.getElementById('outTitleTxt').textContent = rawTitle.substring(0,55)+(rawTitle.length>55?'…':'');
+
+  document.getElementById('docBody').innerHTML = html;
+  applyTheme(S.theme);
+  refreshFname();
+
+  document.getElementById('outputZone').classList.add('show');
+  document.getElementById('outputZone').scrollIntoView({ behavior:'smooth', block:'start' });
+
+  /* reset btn */
+  document.getElementById('genBtn').disabled = false;
+  document.getElementById('btnTxt').textContent = 'Genera';
+  S.busy = false;
+}
+
+function renderError(msg) {
+  document.getElementById('loadingZone').classList.remove('show');
+  document.getElementById('docBody').innerHTML = `
+    <div style="text-align:center;padding:60px 40px;color:var(--text-2)">
+      <div style="font-size:40px;margin-bottom:16px">⚠️</div>
+      <div style="font-size:16px;margin-bottom:8px;color:var(--text)">Errore durante la generazione</div>
+      <div style="font-size:13px">${msg}</div>
+      <div style="font-size:12px;margin-top:12px;color:var(--text-3)">Controlla che OPENAI_API_KEY sia configurata su Netlify</div>
+    </div>`;
+  document.getElementById('outputZone').classList.add('show');
+  document.getElementById('genBtn').disabled = false;
+  document.getElementById('btnTxt').textContent = 'Genera';
+  S.busy = false;
+}
+
+/* ── ACTIONS ── */
+function doRegen() {
+  if (S.lastPrompt) {
+    document.getElementById('promptTA').value = S.lastPrompt;
+    generate();
+  }
+}
+
+function doCopy() {
+  const text = document.getElementById('docBody').innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = event.currentTarget;
+    btn.textContent = '✅ Copiato!';
+    setTimeout(()=>btn.textContent='📋 Copia testo', 2000);
+  });
+}
+
+function doDownload() {
+  const content = document.getElementById('docBody').innerText;
+  const h1 = document.querySelector('#docBody .cover-title');
+  const titleRaw = h1 ? h1.textContent.trim() : S.lastPrompt.substring(0,40);
+  const fname = titleRaw.replace(/[^a-zA-Z0-9\s]/g,'').trim().replace(/\s+/g,'_').substring(0,40);
+  const blob = new Blob([content], { type:'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fname+'_EbookForgeAI.txt';
+  a.click(); URL.revokeObjectURL(url);
+}
+
+/* ── KEYBOARD ── */
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey||e.metaKey) && e.key==='Enter' && !S.busy) generate();
+});
+
+/* init */
+refreshFname();
+</script>
+</body>
+</html>
